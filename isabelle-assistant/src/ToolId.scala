@@ -42,6 +42,7 @@ enum ToolId(val wireName: String) {
   case EditTheory extends ToolId("edit_theory")
   case TryMethods extends ToolId("try_methods")
   case GetEntities extends ToolId("get_entities")
+  case WebSearch extends ToolId("web_search")
   case CreateTheory extends ToolId("create_theory")
   case OpenTheory extends ToolId("open_theory")
   case AskUser extends ToolId("ask_user")
@@ -51,6 +52,13 @@ enum ToolId(val wireName: String) {
   case TaskListNext extends ToolId("task_list_next")
   case TaskListShow extends ToolId("task_list_show")
   case TaskListGet extends ToolId("task_list_get")
+  case MemoryAdd extends ToolId("memory_add")
+  case MemoryDelete extends ToolId("memory_delete")
+  case MemoryDeleteTopic extends ToolId("memory_delete_topic")
+  case MemoryListTopics extends ToolId("memory_list_topics")
+  case MemoryList extends ToolId("memory_list")
+  case MemoryGet extends ToolId("memory_get")
+  case MemorySearch extends ToolId("memory_search")
   case PlanApproach extends ToolId("plan_approach")
 }
 

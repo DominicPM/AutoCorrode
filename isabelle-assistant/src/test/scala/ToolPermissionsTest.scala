@@ -169,7 +169,7 @@ class ToolPermissionsTest
   test("all tools should have descriptions for permission prompts") {
     val permissions = ToolPermissions.getAllToolPermissions
     permissions should not be empty
-    permissions.length shouldBe 43 // All 43 tools
+    permissions.length shouldBe 51 // All 51 tools
   }
 
   test("toolDescriptions should cover every defined tool") {
@@ -210,9 +210,9 @@ class ToolPermissionsTest
     ToolPermissions.getConfiguredLevel("edit_theory") shouldBe ToolPermissions.AskAlways
   }
 
-  test("getAllToolPermissions should return all 43 tools") {
+  test("getAllToolPermissions should return all 50 tools") {
     val all = ToolPermissions.getAllToolPermissions
-    all.length shouldBe 43
+    all.length shouldBe 51
     all.map(_._1).toSet shouldBe AssistantTools.tools.map(_.name).toSet
   }
 
@@ -296,4 +296,32 @@ class ToolPermissionsTest
       ToolPermissions.promptUser("verify_proof", None, None, null) shouldBe ToolPermissions.Denied
     }
   }
+
+  test("memory read tools should have Allow permission by default") {
+    val readTools = List("memory_add", "memory_list_topics", "memory_list",
+      "memory_get", "memory_search")
+    for (toolName <- readTools) {
+      val level = ToolPermissions.getConfiguredLevel(toolName)
+      level shouldBe ToolPermissions.Allow
+    }
+  }
+
+  test("memory delete tools should have AskAtFirstUse permission by default") {
+    val deleteTools = List("memory_delete", "memory_delete_topic")
+    for (toolName <- deleteTools) {
+      val level = ToolPermissions.getConfiguredLevel(toolName)
+      level shouldBe ToolPermissions.AskAtFirstUse
+    }
+  }
+
+  test("memory tools should have descriptions") {
+    val memoryTools = List("memory_add", "memory_delete", "memory_delete_topic",
+      "memory_list_topics", "memory_list", "memory_get", "memory_search")
+    for (toolName <- memoryTools) {
+      val desc = ToolPermissions.toolDescriptions.get(toolName)
+      desc should not be empty
+      desc.get should not be empty
+    }
+  }
+
 }

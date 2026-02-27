@@ -2,4 +2,5 @@
 01_isabelle_style.md
 02_tools.md
 03_task_planning.md
+04_memory.md
 04_planning_tool.md

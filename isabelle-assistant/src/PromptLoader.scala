@@ -22,6 +22,7 @@ object PromptLoader {
     "01_isabelle_style.md",
     "02_tools.md",
     "03_task_planning.md",
+    "04_memory.md",
     "04_planning_tool.md"
   )
   private val builtInSystemPrompt =
@@ -119,7 +120,10 @@ object PromptLoader {
         .getOrElse(defaultSystemPromptFiles)
 
       val classpathPrompts = classpathIndex
-        .flatMap(name => readResource(s"prompts/system/$name"))
+        .flatMap(name => readResource(s"prompts/system/$name").map { content =>
+          // Inject memory summary into 04_memory.md
+          if (name == "04_memory.md") injectMemorySummary(content) else content
+        })
         .map(_.trim)
         .filter(_.nonEmpty)
 
@@ -155,8 +159,29 @@ object PromptLoader {
               if (existing.nonEmpty) existing
               else dirEntries.filter(_.endsWith(".md")).sorted
             } else dirEntries.filter(_.endsWith(".md")).sorted
-          files.map(name => readFile(systemDir + Path.explode(name))).mkString("\n\n")
+          files.map { name =>
+            val content = readFile(systemDir + Path.explode(name))
+            // Inject memory summary into 04_memory.md
+            if (name == "04_memory.md") {
+              injectMemorySummary(content)
+            } else content
+          }.mkString("\n\n")
         }
+    }
+  }
+
+  /**
+   * Inject memory summary into a prompt template.
+   * Replaces {{memory_summary}} with the actual memory summary.
+   */
+  private def injectMemorySummary(content: String): String = {
+    try {
+      val memorySummary = MemoryStore.getAllMemoriesSummary()
+      renderTemplate(content, Map("memory_summary" -> memorySummary))
+    } catch {
+      case scala.util.control.NonFatal(e) =>
+        Output.warning(s"[PromptLoader] Failed to inject memory summary: ${e.getMessage}")
+        content.replace("{{memory_summary}}", "No memories available.")
     }
   }
 

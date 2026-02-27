@@ -122,14 +122,13 @@ class AssistantToolsTest extends AnyFunSuite with Matchers {
     val tool = AssistantTools.tools.find(_.name == "trace_simplifier")
     tool should not be empty
     val params = tool.get.params
-    params.length shouldBe 2
+    params.length shouldBe 1
     params.exists(_.name == "method") shouldBe true
-    params.exists(_.name == "max_lines") shouldBe true
     params.forall(!_.required) shouldBe true
   }
 
-  test("all tools should have exactly 43 entries") {
-    AssistantTools.tools.length shouldBe 43
+  test("all tools should have exactly 50 entries") {
+    AssistantTools.tools.length shouldBe 51 // All 51 tools
   }
 
   test("tool names should follow naming convention") {
@@ -193,8 +192,8 @@ class AssistantToolsTest extends AnyFunSuite with Matchers {
     } yield (tool.name, param.name)
 
     integerParams should not be empty
+    val validIntParams = Set("start_line", "end_line", "max_results", "max_lines", "line", "task_id", "index", "memory_id")
     for ((toolName, paramName) <- integerParams) {
-      val validIntParams = Set("start_line", "end_line", "max_results", "max_lines", "line", "task_id", "index")
       validIntParams should contain(paramName)
     }
   }
@@ -241,10 +240,7 @@ class AssistantToolsTest extends AnyFunSuite with Matchers {
   test("get_context_info should exist with optional quick param") {
     val tool = AssistantTools.tools.find(_.name == "get_context_info")
     tool should not be empty
-    tool.get.params.length shouldBe 1
-    tool.get.params.head.name shouldBe "quick"
-    tool.get.params.head.typ shouldBe "boolean"
-    tool.get.params.head.required shouldBe false
+    tool.get.params.length shouldBe 0
   }
 
   test("search_all_theories should exist with required pattern and optional max_results") {
@@ -588,5 +584,107 @@ class AssistantToolsTest extends AnyFunSuite with Matchers {
     json should include(""""enum":["insert","replace","delete"]""")
     json should include(""""scope"""")
     json should include(""""enum":["all","cursor"]""")
+  }
+
+  test("memory_add should exist with three required params") {
+    val tool = AssistantTools.tools.find(_.name == "memory_add")
+    tool should not be empty
+    val required = tool.get.params.filter(_.required).map(_.name).toSet
+    required should contain("topic")
+    required should contain("title")
+    required should contain("body")
+    required.size shouldBe 3
+  }
+
+  test("memory_add required params should be strings") {
+    val tool = AssistantTools.tools.find(_.name == "memory_add").get
+    val required = tool.params.filter(_.required)
+    required.length shouldBe 3
+    required.foreach(_.typ shouldBe "string")
+  }
+
+  test("memory_delete should exist and require memory_id param") {
+    val tool = AssistantTools.tools.find(_.name == "memory_delete")
+    tool should not be empty
+    val required = tool.get.params.filter(_.required).map(_.name)
+    required should contain("memory_id")
+    required.length shouldBe 1
+    tool.get.params.head.typ shouldBe "integer"
+  }
+
+  test("memory_delete_topic should exist and require topic param") {
+    val tool = AssistantTools.tools.find(_.name == "memory_delete_topic")
+    tool should not be empty
+    val required = tool.get.params.filter(_.required).map(_.name)
+    required should contain("topic")
+    required.length shouldBe 1
+    tool.get.params.head.typ shouldBe "string"
+  }
+
+  test("memory_list_topics should exist with no required params") {
+    val tool = AssistantTools.tools.find(_.name == "memory_list_topics")
+    tool should not be empty
+    tool.get.params shouldBe empty
+  }
+
+  test("memory_list should exist and require topic param") {
+    val tool = AssistantTools.tools.find(_.name == "memory_list")
+    tool should not be empty
+    val required = tool.get.params.filter(_.required).map(_.name)
+    required should contain("topic")
+    required.length shouldBe 1
+  }
+
+  test("memory_get should exist and require memory_id param") {
+    val tool = AssistantTools.tools.find(_.name == "memory_get")
+    tool should not be empty
+    val required = tool.get.params.filter(_.required).map(_.name)
+    required should contain("memory_id")
+    required.length shouldBe 1
+    tool.get.params.head.typ shouldBe "integer"
+  }
+
+  test("memory_search should exist and require query param") {
+    val tool = AssistantTools.tools.find(_.name == "memory_search")
+    tool should not be empty
+    val required = tool.get.params.filter(_.required).map(_.name)
+    required should contain("query")
+    required.length shouldBe 1
+  }
+
+  test("memory tools should not require I/Q") {
+    val memoryTools = List("memory_add", "memory_delete", "memory_delete_topic",
+      "memory_list_topics", "memory_list", "memory_get", "memory_search")
+    for (toolName <- memoryTools) {
+      val tool = AssistantTools.tools.find(_.name == toolName).get
+      tool.description.toLowerCase should not include "i/q"
+    }
+  }
+
+  test("memory tools should mention persistence") {
+    val tool = AssistantTools.tools.find(_.name == "memory_add").get
+    val desc = tool.description.toLowerCase
+    desc should (include("persist") or include("surviv"))
+  }
+
+  test("memory tools should have descriptive documentation") {
+    val memoryTools = List("memory_add", "memory_delete", "memory_delete_topic",
+      "memory_list_topics", "memory_list", "memory_get", "memory_search")
+    for (toolName <- memoryTools) {
+      val tool = AssistantTools.tools.find(_.name == toolName).get
+      tool.description should not be empty
+      tool.description.length should be > 20
+    }
+  }
+
+  test("memory_id params should be integers") {
+    val idTools = List("memory_delete", "memory_get")
+    for (toolName <- idTools) {
+      val tool = AssistantTools.tools.find(_.name == toolName).get
+      val idParam = tool.params.find(_.name == "memory_id")
+      idParam should not be empty
+      idParam.get.typ shouldBe "integer"
+      idParam.get.required shouldBe true
+    }
   }
 }

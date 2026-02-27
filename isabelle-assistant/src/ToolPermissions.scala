@@ -164,6 +164,7 @@ object ToolPermissions {
     ToolId.EditTheory -> AskAlways,
     ToolId.CreateTheory -> AskAlways,
     ToolId.OpenTheory -> AskAlways,
+    ToolId.WebSearch -> AskAlways,
     
     // Meta-tool for user interaction → Always Allow (exempt from permission checks)
     ToolId.AskUser -> Allow,
@@ -175,6 +176,15 @@ object ToolPermissions {
     ToolId.TaskListNext -> Allow,
     ToolId.TaskListShow -> Allow,
     ToolId.TaskListGet -> Allow,
+    
+    // Memory management → Allow for read/add, AskAtFirstUse for delete
+    ToolId.MemoryAdd -> Allow,
+    ToolId.MemoryDelete -> AskAtFirstUse,
+    ToolId.MemoryDeleteTopic -> AskAtFirstUse,
+    ToolId.MemoryListTopics -> Allow,
+    ToolId.MemoryList -> Allow,
+    ToolId.MemoryGet -> Allow,
+    ToolId.MemorySearch -> Allow,
     
     // Planning agent → Allow (read-only exploration, no side effects)
     ToolId.PlanApproach -> Allow
@@ -208,6 +218,7 @@ object ToolPermissions {
     ToolId.GetProcessingStatus -> "check PIDE processing status",
     ToolId.GetSorryPositions -> "find incomplete proofs (sorry/oops)",
     ToolId.SetCursorPosition -> "move the cursor position",
+    ToolId.WebSearch -> "search the web for documentation and information",
     ToolId.VerifyProof -> "verify proof methods using Isabelle",
     ToolId.ExecuteStep -> "execute proof steps",
     ToolId.TryMethods -> "try multiple proof methods",
@@ -228,6 +239,13 @@ object ToolPermissions {
     ToolId.TaskListNext -> "retrieve the next pending task list item",
     ToolId.TaskListShow -> "show the current task list",
     ToolId.TaskListGet -> "retrieve a specific task list item",
+    ToolId.MemoryAdd -> "add persistent memories to the knowledge base",
+    ToolId.MemoryDelete -> "delete specific memories",
+    ToolId.MemoryDeleteTopic -> "delete entire memory topics",
+    ToolId.MemoryListTopics -> "list all memory topics",
+    ToolId.MemoryList -> "list memories in a topic",
+    ToolId.MemoryGet -> "retrieve specific memory details",
+    ToolId.MemorySearch -> "search for memories",
     ToolId.PlanApproach -> "launch a planning agent to analyze problems and generate implementation plans"
   )
   require(

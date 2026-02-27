@@ -176,6 +176,22 @@ object UIColors {
     def optionLetter: String = ThemeUtils.themedHex("#d4a020", "#f5a623")  // Amber accent
   }
   
+  // Memory widget colors (teal/green accent for knowledge/memory semantics)
+  object Memory {
+    // Keep card backgrounds white so rendered LaTeX integrates cleanly.
+    def background: String = "white"
+    def border: String = ThemeUtils.themedHex("#00897b", "#009688")  // Teal left border
+    
+    // Header text ("Memory Added")
+    def headerText: String = ThemeUtils.themedHex("#00897b", "#00796b")
+    
+    // Label color ("Topic:")
+    def labelColor: String = ThemeUtils.themedHex("#b0bec5", "#607d8b")
+    
+    // Memory content text
+    def memoryText: String = "#333333"
+  }
+  
   // Model label colors (for the model display in the top panel)
   object ModelLabel {
     def muted: String = ThemeUtils.themedHex("#888888", "#888888")
