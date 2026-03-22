@@ -14,8 +14,12 @@ runs:
     - name: Patch AFP Isabelle/C parser
       shell: bash
       run: |
-        cd afp
-        patch -p1 < $GITHUB_WORKSPACE/.github/patches/isabelle_c_parser_language.patch
+        TARGET=afp/thys/Isabelle_C/C11-FrontEnd/src/C_Parser_Language.thy
+        sed -i \
+          '/| (CDecl0 (\[CTypeSpec0 (CIntType0 _)\], \[\], _)) => ("int",decl)/{
+            n
+            c\                  | (CDecl0 (_, [((Some (CDeclr0 (nameIdent,_,_,_,_)),_),_)], _)) =>\n                      (getVarName nameIdent, decl)\n                  | (CDecl0 (_, [], _)) => ("unknown", decl)\n                  | dd => ("unknown", dd)
+          }' "$TARGET"
 
     - name: Set AFP component base
       shell: bash
