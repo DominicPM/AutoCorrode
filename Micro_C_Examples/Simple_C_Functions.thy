@@ -998,28 +998,28 @@ definition c_count_down_contract :: \<open>c_uint \<Rightarrow> ('s::{sepalg}, c
 ucincl_auto c_count_down_contract
 
 lemma c_count_down_spec:
-  assumes \<open>while_fuel = unat n\<close>
-  shows \<open>\<Gamma>; c_count_down while_fuel n \<Turnstile>\<^sub>F c_count_down_contract n\<close>
+  assumes \<open>while_fuel = Suc (unat n)\<close>
+    shows \<open>\<Gamma>; c_count_down while_fuel n \<Turnstile>\<^sub>F c_count_down_contract n\<close>
   apply (crush_boot f: c_count_down_def contract: c_count_down_contract_def)
   apply crush_base
   apply (ucincl_discharge\<open>
     rule_tac
-      INV=\<open>\<lambda>k. (\<Squnion>g. x \<mapsto>\<langle>\<top>\<rangle> g\<down>(1 :: c_uint)) \<star>
-               (\<Squnion>g. xa \<mapsto>\<langle>\<top>\<rangle> g\<down>(0 :: c_uint)) \<star>
-               (\<Squnion>g. xb \<mapsto>\<langle>\<top>\<rangle> g\<down>(of_nat k :: c_uint))\<close>
+      INV=\<open>\<lambda>k. (\<Squnion>g. x \<mapsto>\<langle>\<top>\<rangle> g\<down>((if k = 0 then 0 else 1) :: c_uint)) \<star>
+               (\<Squnion>g. xa \<mapsto>\<langle>\<top>\<rangle> g\<down>((if k = 0 then 1 else 0) :: c_uint)) \<star>
+               (\<Squnion>g. xb \<mapsto>\<langle>\<top>\<rangle> g\<down>(of_nat (k - 1) :: c_uint))\<close>
       and INV'=\<open>\<lambda>k. (\<Squnion>g. x \<mapsto>\<langle>\<top>\<rangle> g\<down>(1 :: c_uint)) \<star>
                     (\<Squnion>g. xa \<mapsto>\<langle>\<top>\<rangle> g\<down>(0 :: c_uint)) \<star>
-                    (\<Squnion>g. xb \<mapsto>\<langle>\<top>\<rangle> g\<down>(of_nat (Suc k) :: c_uint))\<close>
+                    (\<Squnion>g. xb \<mapsto>\<langle>\<top>\<rangle> g\<down>(of_nat k :: c_uint))\<close>
       and \<tau>=\<open>\<lambda>_. \<langle>False\<rangle>\<close>
       and \<theta>=\<open>\<lambda>_. \<langle>False\<rangle>\<close>
     in wp_bounded_while_framedI\<close>)
   apply (crush_base simp add: c_unsigned_eq_def c_unsigned_sub_def
       unat_of_nat_eq word_of_nat_eq_0_iff of_nat_diff linorder_not_less
       unat_gt_0 word_of_nat_less)+
-  apply (metis add.commute assms less_is_non_zero_p1 word_of_nat_less)
-  apply (metis add.commute assms less_is_non_zero_p1 word_of_nat_less)
-  apply (metis add.commute assms less_is_non_zero_p1 word_of_nat_less)
-  apply (simp add: assms unat_of_nat_eq)
+  subgoal apply (simp add: assms) using dvd_imp_le unat_lt2p[where x=n] by fastforce
+  subgoal apply (simp add: assms) using dvd_imp_le unat_lt2p[where x=n] by fastforce
+  subgoal apply (simp add: assms) using dvd_imp_le unat_lt2p[where x=n] by fastforce
+  apply (simp add: assms)+
   done
 
 end

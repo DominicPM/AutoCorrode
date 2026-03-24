@@ -656,7 +656,8 @@ subsection\<open>Bounded while-loop triples\<close>
 
 text\<open>Basic bounded while-loop triple. The invariant @{term INV} is indexed by remaining fuel.
 Each iteration step must establish the invariant for one less fuel via a triple on the
-condition followed by the body (when the condition is true).\<close>
+condition followed by the body (when the condition is true). At fuel exhaustion,
+the rule requires proving the guard cannot still be true (total verification).\<close>
 lemma sstriple_bounded_while:
     fixes INV :: \<open>nat \<Rightarrow> 'a assert\<close>
       and INV' :: \<open>nat \<Rightarrow> 'a assert\<close>
@@ -665,15 +666,33 @@ lemma sstriple_bounded_while:
       (\<lambda>c. if c then INV' k else \<psi> ()) \<bowtie> \<rho> \<bowtie> \<theta>\<close>
       and body_step: \<open>\<And>k. k < n \<Longrightarrow>
     \<Gamma> ; INV' k \<turnstile> body \<stileturn> (\<lambda>_. INV k) \<bowtie> \<rho> \<bowtie> \<theta>\<close>
-      and base: \<open>INV 0 \<longlongrightarrow> \<psi> ()\<close>
+      and base_cond: \<open>\<Gamma> ; INV 0 \<turnstile> cond \<stileturn>
+        (\<lambda>c. if c then \<bottom> else \<psi> ()) \<bowtie> \<rho> \<bowtie> \<theta>\<close>
     shows \<open>\<Gamma> ; INV n \<turnstile> bounded_while n cond body \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<theta>\<close>
-  using step body_step
+  using step body_step base_cond
 proof (induction n)
   case 0
-  have \<open>\<Gamma> ; INV 0 \<turnstile> skip \<stileturn> (\<lambda>_. INV 0) \<bowtie> \<rho> \<bowtie> \<theta>\<close>
-    by (rule sstriple_skipI)
-  then have \<open>\<Gamma> ; INV 0 \<turnstile> skip \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<theta>\<close>
-    using base by (auto intro: sstriple_consequence aentails_refl)
+  have cond0: \<open>\<Gamma> ; INV 0 \<turnstile> cond \<stileturn>
+      (\<lambda>c. if c then \<bottom> else \<psi> ()) \<bowtie> \<rho> \<bowtie> \<theta>\<close>
+    using base_cond by simp
+  have true_branch: \<open>\<Gamma> ; \<bottom>
+      \<turnstile> panic bounded_while_exhausted_msg \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<theta>\<close>
+    by (simp add: sstriple_panic bot_aentails_all)
+  have false_branch: \<open>\<Gamma> ; \<psi> () \<turnstile> skip \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<theta>\<close>
+  proof -
+    have \<open>\<Gamma> ; \<psi> () \<turnstile> skip \<stileturn> (\<lambda>_. \<psi> ()) \<bowtie> \<rho> \<bowtie> \<theta>\<close>
+      by (rule sstriple_skipI)
+    then show ?thesis
+      by (auto intro: sstriple_consequence aentails_refl)
+  qed
+  have \<open>\<Gamma> ; INV 0 \<turnstile> bind cond (\<lambda>c. if c then panic bounded_while_exhausted_msg else skip)
+      \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<theta>\<close>
+  proof (rule sstriple_bindI[OF cond0])
+    fix c :: bool
+    show \<open>\<Gamma> ; (if c then \<bottom> else \<psi> ())
+      \<turnstile> (if c then panic bounded_while_exhausted_msg else skip) \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<theta>\<close>
+      using true_branch false_branch by (cases c) simp_all
+  qed
   then show ?case by (simp add: bounded_while_zero)
 next
   case (Suc n)
@@ -716,10 +735,15 @@ lemma sstriple_bounded_while_framed:
               (\<lambda>c. if c then INV' k else INV 0) \<bowtie> \<tau> \<bowtie> \<theta>\<close>
       and body_step: \<open>\<And>k. k < n \<Longrightarrow>
             \<Gamma> ; INV' k \<turnstile> body \<stileturn> (\<lambda>_. INV k) \<bowtie> \<tau> \<bowtie> \<theta>\<close>
+      and cond_exhaust: \<open>\<Gamma> ; INV 0 \<turnstile> cond \<stileturn>
+            (\<lambda>c. if c then \<bottom> else INV 0) \<bowtie> \<tau> \<bowtie> \<theta>\<close>
     shows \<open>\<Gamma> ; INV n \<star> ((INV 0 \<Zsurj> \<psi> ()) \<sqinter> (\<Sqinter>r. \<tau> r \<Zsurj> \<rho> r) \<sqinter> (\<Sqinter>r. \<theta> r \<Zsurj> \<chi> r))
               \<turnstile> bounded_while n cond body \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<chi>\<close>
 proof -
   let ?pc = \<open>(INV 0 \<Zsurj> \<psi> ()) \<sqinter> (\<Sqinter>r. \<tau> r \<Zsurj> \<rho> r) \<sqinter> (\<Sqinter>r. \<theta> r \<Zsurj> \<chi> r)\<close>
+  let ?rho = \<open>\<lambda>r. \<tau> r \<star> ?pc\<close>
+  let ?theta = \<open>\<lambda>a. \<theta> a \<star> ?pc\<close>
+  let ?psi0 = \<open>\<lambda>_. INV 0 \<star> ?pc\<close>
   have tau_rho: \<open>\<And>r. \<tau> r \<star> ?pc \<longlongrightarrow> \<rho> r\<close>
   proof -
     have \<open>\<And>r. \<tau> r \<star> (\<Sqinter>r. \<tau> r \<Zsurj> \<rho> r) \<longlongrightarrow> \<rho> r\<close>
@@ -731,37 +755,89 @@ proof -
     by (meson aentails_refl aentails_trans' aentails_inter_weaken aforall_entailsL asepconj_mono awand_counit)
   have inv0_psi: \<open>INV 0 \<star> ?pc \<longlongrightarrow> \<psi> ()\<close>
     by (metis (no_types, lifting) aentails_refl local.asepconj_comm local.aentails_int local.awand_adjoint)
-  \<comment>\<open>Frame each condition step\<close>
-  {
+  have cond_step': \<open>\<And>k. k < n \<Longrightarrow>
+      \<Gamma> ; INV (Suc k) \<star> ?pc \<turnstile> cond \<stileturn>
+        (\<lambda>c. if c then INV' k \<star> ?pc else INV 0 \<star> ?pc) \<bowtie> ?rho \<bowtie> ?theta\<close>
+  proof -
     fix k
     assume kn: \<open>k < n\<close>
     have \<open>\<Gamma> ; INV (Suc k) \<star> ?pc \<turnstile> cond \<stileturn>
-        (\<lambda>c. (if c then INV' k else INV 0) \<star> ?pc)
-          \<bowtie> (\<lambda>r. \<tau> r \<star> ?pc) \<bowtie> (\<lambda>a. \<theta> a \<star> ?pc)\<close>
+        (\<lambda>c. (if c then INV' k else INV 0) \<star> ?pc) \<bowtie> ?rho \<bowtie> ?theta\<close>
       using cond_step[OF kn] ucincl_INV by (intro sstriple_frame_rule; clarsimp)
-    moreover have \<open>\<And>c. (if c then INV' k else INV 0) \<star> ?pc \<longlongrightarrow>
-        (if c then INV' k \<star> ?pc else \<psi> ())\<close>
-      using inv0_psi by (auto simp add: aentails_refl)
-    ultimately have \<open>\<Gamma> ; INV (Suc k) \<star> ?pc \<turnstile> cond \<stileturn>
-        (\<lambda>c. if c then INV' k \<star> ?pc else \<psi> ())
-          \<bowtie> \<rho> \<bowtie> \<chi>\<close>
-      using tau_rho theta_chi
-      by (meson aentails_refl aentails_trans sstriple_consequence)
-  }
-  moreover {
-    fix k
-    assume kn: \<open>k < n\<close>
-    have \<open>\<Gamma> ; INV' k \<star> ?pc \<turnstile> body \<stileturn>
-        (\<lambda>_. INV k \<star> ?pc) \<bowtie> (\<lambda>r. \<tau> r \<star> ?pc) \<bowtie> (\<lambda>a. \<theta> a \<star> ?pc)\<close>
-      using body_step[OF kn] ucincl_INV' by (intro sstriple_frame_rule; clarsimp)
-    from this have \<open>\<Gamma> ; INV' k \<star> ?pc \<turnstile> body \<stileturn>
-        (\<lambda>_. INV k \<star> ?pc) \<bowtie> \<rho> \<bowtie> \<chi>\<close>
-      using tau_rho theta_chi
-      by (meson aentails_refl sstriple_consequence)
-  }
-  ultimately have \<open>\<Gamma> ; INV n \<star> ?pc \<turnstile> bounded_while n cond body \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<chi>\<close>
-    using sstriple_bounded_while[where INV=\<open>\<lambda>k. INV k \<star> ?pc\<close> and INV'=\<open>\<lambda>k. INV' k \<star> ?pc\<close>]
-      inv0_psi by blast
+    then show \<open>\<Gamma> ; INV (Suc k) \<star> ?pc \<turnstile> cond \<stileturn>
+        (\<lambda>c. if c then INV' k \<star> ?pc else INV 0 \<star> ?pc) \<bowtie> ?rho \<bowtie> ?theta\<close>
+    proof (rule sstriple_consequence)
+      fix c
+      show \<open>(if c then INV' k else INV 0) \<star> ?pc
+          \<longlongrightarrow> (if c then INV' k \<star> ?pc else INV 0 \<star> ?pc)\<close>
+        by (cases c) (simp_all add: aentails_refl)
+    qed (simp_all add: aentails_refl)
+  qed
+  have body_step': \<open>\<And>k. k < n \<Longrightarrow>
+      \<Gamma> ; INV' k \<star> ?pc \<turnstile> body \<stileturn> (\<lambda>_. INV k \<star> ?pc) \<bowtie> ?rho \<bowtie> ?theta\<close>
+    using body_step ucincl_INV' by (intro allI impI sstriple_frame_rule; clarsimp)
+  have cond_exhaust_raw: \<open>\<Gamma> ; INV 0 \<star> ?pc \<turnstile> cond \<stileturn>
+      (\<lambda>c. (if c then \<bottom> else INV 0) \<star> ?pc)
+      \<bowtie> ?rho \<bowtie> ?theta\<close>
+    using cond_exhaust ucincl_INV by (intro sstriple_frame_rule; clarsimp)
+  have cond_exhaust': \<open>\<Gamma> ; INV 0 \<star> ?pc \<turnstile> cond \<stileturn>
+      (\<lambda>c. if c then \<bottom> else INV 0 \<star> ?pc)
+      \<bowtie> ?rho \<bowtie> ?theta\<close>
+  proof (rule sstriple_consequence[OF cond_exhaust_raw])
+    show \<open>INV 0 \<star> ?pc \<longlongrightarrow> INV 0 \<star> ?pc\<close>
+      by (rule aentails_refl)
+    show \<open>\<And>c. (if c then \<bottom> else INV 0) \<star> ?pc
+      \<longlongrightarrow> (if c then \<bottom> else INV 0 \<star> ?pc)\<close>
+    proof -
+      fix c
+      show \<open>(if c then \<bottom> else INV 0) \<star> ?pc
+        \<longlongrightarrow> (if c then \<bottom> else INV 0 \<star> ?pc)\<close>
+      proof (cases c)
+        case True
+        then show ?thesis
+          by (simp add: asepconj_simp bot_aentails_all)
+      next
+        case False
+        then show ?thesis
+          by (simp add: aentails_refl)
+      qed
+    qed
+    show \<open>\<And>r. ?rho r \<longlongrightarrow> ?rho r\<close>
+    proof -
+      fix r
+      show \<open>?rho r \<longlongrightarrow> ?rho r\<close> by (rule aentails_refl)
+    qed
+    show \<open>\<And>a. ?theta a \<longlongrightarrow> ?theta a\<close>
+    proof -
+      fix a
+      show \<open>?theta a \<longlongrightarrow> ?theta a\<close> by (rule aentails_refl)
+    qed
+  qed
+  have loop0: \<open>\<Gamma> ; INV n \<star> ?pc \<turnstile> bounded_while n cond body \<stileturn> ?psi0 \<bowtie> ?rho \<bowtie> ?theta\<close>
+    by (rule sstriple_bounded_while[
+              where INV=\<open>\<lambda>k. INV k \<star> ?pc\<close>
+                and INV'=\<open>\<lambda>k. INV' k \<star> ?pc\<close>
+                and \<psi>=\<open>?psi0\<close>
+                and \<rho>=\<open>?rho\<close>
+                and \<theta>=\<open>?theta\<close>,
+              OF cond_step' body_step' cond_exhaust'])
+  have \<open>\<Gamma> ; INV n \<star> ?pc \<turnstile> bounded_while n cond body \<stileturn> \<psi> \<bowtie> \<rho> \<bowtie> \<chi>\<close>
+  proof (rule sstriple_consequence[OF loop0])
+    show \<open>INV n \<star> ?pc \<longlongrightarrow> INV n \<star> ?pc\<close>
+      by (rule aentails_refl)
+    show \<open>\<And>u. ?psi0 u \<longlongrightarrow> \<psi> u\<close>
+    proof -
+      fix u
+      have \<open>?psi0 u = INV 0 \<star> ?pc\<close> by simp
+      moreover have \<open>\<psi> u = \<psi> ()\<close> by (cases u) simp
+      ultimately show \<open>?psi0 u \<longlongrightarrow> \<psi> u\<close>
+        using inv0_psi by simp
+    qed
+    show \<open>\<And>r. ?rho r \<longlongrightarrow> \<rho> r\<close>
+      using tau_rho .
+    show \<open>\<And>a. ?theta a \<longlongrightarrow> \<chi> a\<close>
+      using theta_chi .
+  qed
   then show ?thesis by simp
 qed
 
