@@ -34,7 +34,8 @@ lemma raw_for_loop_cons [micro_rust_simps]:
   by (auto simp add: raw_for_loop_def micro_rust_simps)
 
 lemma bounded_while_zero [micro_rust_simps]:
-  shows \<open>bounded_while 0 cond body = skip\<close>
+  shows \<open>bounded_while 0 cond body =
+    bind cond (\<lambda>c. if c then panic bounded_while_exhausted_msg else skip)\<close>
   by simp
 
 lemma bounded_while_Suc [micro_rust_simps]:

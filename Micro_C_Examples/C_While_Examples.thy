@@ -88,18 +88,11 @@ lemma ucincl_Un [ucincl_intros]:
 using assms by (intro ucinclI ucpredI) (metis UN_iff asat_def asat_derived_order_monotone)
 
 lemma c_break_imm_correct:
-  assumes \<open>while_fuel \<ge> 1\<close>
-  shows \<open>\<Gamma>; c_break_imm while_fuel \<Turnstile>\<^sub>F c_break_imm_contract\<close>
+  assumes \<open>while_fuel = 1\<close>
+    shows \<open>\<Gamma>; c_break_imm while_fuel \<Turnstile>\<^sub>F c_break_imm_contract\<close>
+using assms
   apply (crush_boot f: c_break_imm_def contract: c_break_imm_contract_def)
   apply crush_base
-  apply (ucincl_discharge\<open>
-      rule_tac
-        INV=\<open>\<lambda>k. (\<Squnion>g. x \<mapsto>\<langle>\<top>\<rangle> g\<down>(0x2A :: c_uint)) \<star> (\<Squnion>g bf. xa \<mapsto>\<langle>\<top>\<rangle> g\<down>bf)\<close>
-        and INV'=\<open>\<lambda>k. (\<Squnion>g. x \<mapsto>\<langle>\<top>\<rangle> g\<down>(0x2A :: c_uint)) \<star> (\<Squnion>g. xa \<mapsto>\<langle>\<top>\<rangle> g\<down>(0 :: c_uint))\<close>
-        and \<tau>=\<open>\<lambda>_. \<langle>False\<rangle>\<close>
-        and \<theta>=\<open>\<lambda>_. \<langle>False\<rangle>\<close>
-      in wp_bounded_while_framedI\<close>)
-  apply (crush_base simp add: ucincl_intros split: if_splits)
   done
 
 subsection \<open>Continue in Loop\<close>

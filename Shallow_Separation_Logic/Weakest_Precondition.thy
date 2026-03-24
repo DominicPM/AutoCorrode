@@ -1050,6 +1050,8 @@ lemma wp_bounded_while_framedI:
               if c then INV' k else INV 0) \<tau> \<theta>\<close>
       and \<open>\<And>k. k < n \<Longrightarrow>
             INV' k \<longlongrightarrow> \<W>\<P> \<Gamma> body (\<lambda>_. INV k) \<tau> \<theta>\<close>
+      and \<open>INV 0 \<longlongrightarrow> \<W>\<P> \<Gamma> cond (\<lambda>c.
+            if c then \<bottom> else INV 0) \<tau> \<theta>\<close>
     shows \<open>\<phi> \<longlongrightarrow> \<W>\<P> \<Gamma> (bounded_while n cond body) \<psi> \<rho> \<chi>\<close>
 proof -
   let ?pc = \<open>((INV 0 \<Zsurj> \<psi> ()) \<sqinter> (\<Sqinter>r. \<tau> r \<Zsurj> \<rho> r) \<sqinter> (\<Sqinter>r. \<theta> r \<Zsurj> \<chi> r))\<close>

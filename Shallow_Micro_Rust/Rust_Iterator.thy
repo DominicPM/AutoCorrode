@@ -118,13 +118,18 @@ definition raw_for_loop :: \<open>'a list \<Rightarrow> ('a \<Rightarrow> ('s,'v
 subsection\<open>Bounded while loops\<close>
 
 text\<open>A fuel-based while-loop combinator. Terminates by structural recursion on the fuel @{typ nat}.
-When fuel reaches 0 the loop returns @{term skip} (unit). The WP invariant rules force the user to
-prove fuel sufficiency, so the fuel=0 case is unreachable in verified code.\<close>
+When fuel reaches 0, the loop checks the condition one final time and aborts if another
+iteration would be required. This makes fuel insufficiency explicit at runtime and in WP
+reasoning.\<close>
+
+definition bounded_while_exhausted_msg :: String.literal where [micro_rust_simps]:
+  \<open>bounded_while_exhausted_msg = String.implode ''bounded_while: exhausted fuel''\<close>
 fun bounded_while :: \<open>nat \<Rightarrow>
     ('s, bool, 'r, 'abort, 'i, 'o) expression \<Rightarrow>
     ('s, unit, 'r, 'abort, 'i, 'o) expression \<Rightarrow>
     ('s, unit, 'r, 'abort, 'i, 'o) expression\<close> where
-  \<open>bounded_while 0 cond body = skip\<close>
+  \<open>bounded_while 0 cond body =
+     bind cond (\<lambda>c. if c then panic bounded_while_exhausted_msg else skip)\<close>
 | \<open>bounded_while (Suc n) cond body =
      bind cond (\<lambda>c. if c then sequence body (bounded_while n cond body)
                      else skip)\<close>
