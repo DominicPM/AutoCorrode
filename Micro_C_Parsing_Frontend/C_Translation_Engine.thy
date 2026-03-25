@@ -1010,6 +1010,14 @@ struct
              end
            (* T* -> U* reinterpret through void *)
            else if from_inner = to_inner then tm
+           (* Same HOL value type — identity cast, skip void roundtrip.
+              Catches cases where c_numeric_type constructors differ but the
+              underlying word type is the same (e.g. CLong/CLongLong on LP64,
+              or typedef-resolved variants of the same integer width). *)
+           else if let val fh = C_Ast_Utils.hol_type_of from_inner
+                       val th = C_Ast_Utils.hol_type_of to_inner
+                   in fh <> isa_dummyT andalso fh = th end
+                then tm
            else
              let val tm' =
                    (case scalar_pointer_value_hol_ty from_cty of
@@ -4383,7 +4391,6 @@ struct
                         in (name, list_term, actual_cty, SOME (elem_cty, arr_size), false) end
                     | _ =>
                         let val (init_raw, init_cty) = translate_expr tctx init
-                            val init_term = mk_implicit_cast (init_raw, init_cty, actual_cty)
                             val arr_meta =
                               (case array_decl_size declr of
                                  SOME n =>
@@ -4393,6 +4400,18 @@ struct
                                | NONE => NONE)
                             val alias_list_backed =
                               C_Ast_Utils.is_ptr actual_cty andalso expr_is_list_backed_array tctx init
+                            (* For pointer-to-pointer initialization from array-backed
+                               struct fields, skip mk_implicit_cast to match the separate
+                               declaration+assignment path (which binds the RHS directly
+                               without any cast).  This avoids generating unnecessary
+                               c_cast_to_void/c_cast_from_void roundtrips.
+                               Only safe when alias_list_backed guarantees alias storage
+                               (Param/ParamListPtr), so no void-pointer LocalPtr conversion
+                               depends on the from-type being the declared type. *)
+                            val init_term =
+                              if alias_list_backed andalso C_Ast_Utils.is_ptr init_cty
+                              then init_raw
+                              else mk_implicit_cast (init_raw, init_cty, actual_cty)
                         in (name, init_term, actual_cty, arr_meta, alias_list_backed) end
                   end
               | process_one ((Some declr, Some (CInitList0 (init_list, _))), _) =
