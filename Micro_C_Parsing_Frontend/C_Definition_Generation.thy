@@ -223,6 +223,15 @@ struct
   fun type_exists ctxt tname =
     can (Proof_Context.read_type_name {proper = true, strict = true} ctxt) tname
 
+  fun qualify_typ ctxt (Term.Type (name, args)) =
+        let
+          val qualified_name =
+            (case try (Proof_Context.read_type_name {proper = true, strict = false} ctxt) name of
+               SOME ty => fst (Term.dest_Type ty)
+             | NONE => name)
+        in Term.Type (qualified_name, List.map (qualify_typ ctxt) args) end
+    | qualify_typ _ ty = ty
+
   fun ensure_struct_record prefix (sname, fields) lthy =
     let
       val tname = prefix ^ sname
@@ -257,6 +266,7 @@ struct
             | NONE => Term.TFree (n, sort)
           fun subst_ty ty = Term.map_atyps (fn Term.TFree ns => subst_tfree ns | t => t) ty
           val record_fields = List.map (fn (b, ty) => (b, subst_ty ty)) record_fields
+          val record_fields = List.map (fn (b, ty) => (b, qualify_typ ctxt ty)) record_fields
           val tyargs =
             List.map (fn (_, t as Term.TFree (_, sort)) => (NONE, (t, sort))
                       | _ => raise Fail "tfree_subst: unexpected non-TFree") tfree_subst
